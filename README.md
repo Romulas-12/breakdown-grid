@@ -1,5 +1,7 @@
 # Breakdown Grid
 
+[![CI](https://github.com/Romulas-12/breakdown-grid/actions/workflows/ci.yml/badge.svg)](https://github.com/Romulas-12/breakdown-grid/actions/workflows/ci.yml)
+
 A configurable **grid custom-field type** for **Jira 8.16.1 (Server / Data Center)**.
 
 One custom-field type renders a table on an issue. The set of **columns is configured per Jira
@@ -108,6 +110,16 @@ atlas-package -o -B -DskipTests      # → target/breakdown-grid-<version>.jar /
 
 Requires the **Atlassian Plugin SDK 8.2.7** and **JDK 8**. Install the resulting `.jar`/`.obr` via
 *Administration → Manage apps → Upload app*.
+
+## Tests
+
+Unit tests cover the pure logic (schema parsing, validation, numeric normalization, model accessors):
+
+```bash
+atlas-unit-test      # or: mvn -B test
+```
+
+CI (GitHub Actions, `.github/workflows/ci.yml`) runs them on every push / pull request.
 
 Then: create a custom field of type **Breakdown Grid**, add it to the relevant screens, and configure a
 column schema for the project in the admin page. See [`AGENTS.md`](AGENTS.md) for the full developer
