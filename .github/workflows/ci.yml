@@ -16,7 +16,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '8'
-          cache: maven
 
-      - name: Run unit tests
-        run: mvn -B -ntp test
+      # The build needs the Atlassian Plugin SDK: some transitive deps (e.g. jta:jta:1.0.1)
+      # are not publicly downloadable and ship bundled with the SDK's repository.
+      - name: Install Atlassian Plugin SDK
+        run: |
+          curl -fsSL https://packages.atlassian.com/api/gpg/key/public \
+            | sudo gpg --dearmor -o /usr/share/keyrings/atlassian.gpg
+          echo "deb [signed-by=/usr/share/keyrings/atlassian.gpg] https://packages.atlassian.com/debian/atlassian-sdk-deb/ stable contrib" \
+            | sudo tee /etc/apt/sources.list.d/atlassian-sdk.list
+          sudo apt-get update
+          sudo apt-get install -y atlassian-plugin-sdk
+
+      - name: Unit tests
+        run: atlas-unit-test -B

@@ -116,10 +116,11 @@ Requires the **Atlassian Plugin SDK 8.2.7** and **JDK 8**. Install the resulting
 Unit tests cover the pure logic (schema parsing, validation, numeric normalization, model accessors):
 
 ```bash
-atlas-unit-test      # or: mvn -B test
+atlas-unit-test
 ```
 
-CI (GitHub Actions, `.github/workflows/ci.yml`) runs them on every push / pull request.
+Run through the Atlassian Plugin SDK (some transitive deps aren't on Maven Central). CI (GitHub
+Actions, `.github/workflows/ci.yml`) installs the SDK and runs the tests on every push / pull request.
 
 Then: create a custom field of type **Breakdown Grid**, add it to the relevant screens, and configure a
 column schema for the project in the admin page. See [`AGENTS.md`](AGENTS.md) for the full developer
