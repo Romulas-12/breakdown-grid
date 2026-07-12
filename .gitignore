@@ -27,3 +27,6 @@ amps-standalone-*/
 
 # Logs / misc
 *.log
+
+# Local-only project memory (development history / backstage — never published)
+inithistory.md
