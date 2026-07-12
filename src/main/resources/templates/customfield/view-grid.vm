@@ -1,0 +1,33 @@
+$webResourceManager.requireResource("com.breakdowngrid.breakdown-grid:breakdown-grid-resources")
+#if($bdgColumns && $bdgColumns.size() > 0 && $bdgRows && $bdgRows.size() > 0)
+<table class="bdg-view-table">
+    <thead>
+        <tr>
+        #foreach($col in $bdgColumns)
+            <th #if($col.isNumeric)style="text-align:right"#end>$textutils.htmlEncode($col.label)#if($col.hasDescription) <span class="bdg-qh" title="$textutils.htmlEncode($col.description)">?</span>#end</th>
+        #end
+        </tr>
+    </thead>
+    <tbody>
+    #foreach($row in $bdgRows)
+        <tr>
+        #foreach($col in $bdgColumns)
+            <td #if($col.isNumeric)style="text-align:right"#end>$textutils.htmlEncode("$!row.get($col.key)")</td>
+        #end
+        </tr>
+    #end
+    </tbody>
+    #if($bdgHasTotals)
+    <tfoot>
+        <tr>
+        #set($bdgLbl = false)
+        #foreach($col in $bdgColumns)
+            <th #if($col.isNumeric)style="text-align:right"#end>#if($col.sum)$textutils.htmlEncode("$!bdgTotals.get($col.key)")#elseif(!$bdgLbl)Total#set($bdgLbl = true)#end</th>
+        #end
+        </tr>
+    </tfoot>
+    #end
+</table>
+#else
+    <span class="bdg-empty">&mdash;</span>
+#end

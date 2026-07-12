@@ -1,0 +1,122 @@
+/* Значення поля у перегляді (у т.ч. після виносу в окремий модуль) — блок на всю ширину,
+   щоб таблиця розтягувалась по горизонталі. */
+.value.type-breakdown-grid {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Винесений грід-модуль (створюється JS одразу після Details, вигляд і згортка — рідні Jira). */
+.bdg-module .mod-content {
+    overflow-x: auto;
+}
+
+/* Таблиця стилізується повністю власним CSS (клас "aui" НЕ використовуємо, щоб не було
+   конфліктів специфічності з дефолтами AUI). Рамки/відступи/колір відтворюють рідний вигляд Jira. */
+.bdg-view-table {
+    width: 100%;
+    min-width: 340px;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.bdg-edit-table {
+    width: auto;
+    min-width: 340px;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.bdg-view-table td,
+.bdg-edit-table td,
+.bdg-view-table th,
+.bdg-edit-table th {
+    padding: 7px 10px;
+    vertical-align: middle;
+    text-align: left;
+    border-bottom: 1px solid #dfe1e6;
+}
+
+/* Заголовки колонок — ідентичні стандартним міткам полів Jira. */
+.bdg-view-table thead th,
+.bdg-edit-table thead th {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    color: #6b778c;
+}
+
+/* AUI-класи .select / .text дають вигляд стандартних полів Jira; тут лише ширини. */
+.bdg-edit-table input.bdg-num,
+.bdg-edit-table input.bdg-date {
+    width: 130px;
+    text-align: right;
+    margin: 0;
+}
+
+.bdg-edit-table input.bdg-text {
+    width: 100%;
+    min-width: 160px;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.bdg-edit-table select.bdg-select {
+    width: 100%;
+    min-width: 180px;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.bdg-edit-table input.bdg-check {
+    margin: 0;
+}
+
+.bdg-actions {
+    margin-top: 6px;
+}
+
+.bdg-edit-table tfoot th,
+.bdg-view-table tfoot th {
+    font-weight: 600;
+}
+
+.bdg-del {
+    color: #bf2600;
+    padding: 0 6px;
+}
+
+.bdg-empty {
+    color: #707070;
+}
+
+/* Значок «?» біля заголовка колонки — колонка має опис (тултип у title). */
+.bdg-qh {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: #6b778c;
+    border-radius: 50%;
+    cursor: help;
+    vertical-align: middle;
+    /* vertical-align:middle центрує по x-height → значок сидить трохи низько; піднімаємо до центру літер. */
+    position: relative;
+    top: -2px;
+}
+
+/* Назва реквізиту над грідом в edit-режимі — колір/вага як у стандартних міток полів Jira. */
+.bdg-title {
+    color: #6b778c;
+    font-weight: 500;
+    font-size: 14px;
+    margin: 0 0 6px;
+}
+
+.bdg-edit {
+    margin-bottom: 20px;
+}

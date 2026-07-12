@@ -1,0 +1,29 @@
+# Maven / build output
+target/
+*.class
+pom.xml.versionsBackup
+pom.xml.tag
+pom.xml.next
+pom.xml.releaseBackup
+release.properties
+
+# Atlassian Plugin SDK
+.amps/
+amps-standalone-*/
+*.obr
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+
+# macOS
+.DS_Store
+
+# Logs / misc
+*.log

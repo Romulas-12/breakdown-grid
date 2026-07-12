@@ -1,0 +1,65 @@
+<atlassian-plugin key="${atlassian.plugin.key}" name="${project.name}" plugins-version="2">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" />
+        <param name="plugin-icon">images/pluginIcon.png</param>
+        <param name="plugin-logo">images/pluginLogo.png</param>
+    </plugin-info>
+
+    <resource type="i18n" name="i18n" location="breakdown-grid"/>
+
+    <!-- Grid CSS/JS. Контексти issue-сторінок потрібні, бо інлайновий Quick-Edit ІГНОРУЄ
+         requireResource() з edit-шаблону поля — ресурс має бути на батьківській сторінці заздалегідь. -->
+    <web-resource key="breakdown-grid-resources" name="Breakdown Grid Web Resources">
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+
+        <resource type="download" name="breakdown-grid.css" location="/css/breakdown-grid.css"/>
+        <resource type="download" name="breakdown-grid.js" location="/js/breakdown-grid.js"/>
+        <resource type="download" name="images/" location="/images"/>
+
+        <context>breakdown-grid</context>
+        <context>jira.view.issue</context>
+        <context>jira.create.issue</context>
+        <context>jira.edit.issue</context>
+        <context>atl.general</context>
+    </web-resource>
+
+    <!-- Конфігуроване поле-грід -->
+    <customfield-type key="breakdown-grid"
+                      name="Breakdown Grid"
+                      class="com.breakdowngrid.BreakdownGridCFType">
+        <description>Grid whose columns are configured per project in the add-on admin page. Each column has a primitive type (string/number/date/boolean) and can be source-backed with a stored id. Rows can also be read/written from an external system via REST.</description>
+        <resource type="velocity" name="view" location="templates/customfield/view-grid.vm"/>
+        <resource type="velocity" name="edit" location="templates/customfield/edit-grid.vm"/>
+    </customfield-type>
+
+    <!-- REST для зовнішньої системи + проксі автокомпліту -->
+    <rest key="breakdown-grid-rest" path="/breakdown-grid" version="1.0">
+        <description>REST API for the breakdown grid.</description>
+    </rest>
+
+    <!-- Адмін-сторінка -->
+    <servlet key="bdg-config-servlet" name="Breakdown Grid Config"
+             class="com.breakdowngrid.config.ConfigServlet">
+        <description>Admin settings page: source connection and column schema.</description>
+        <url-pattern>/breakdown-grid/config</url-pattern>
+    </servlet>
+
+    <!-- Пункт у лівому меню адмінки: Administration → System → Breakdown Grid -->
+    <web-section key="bdg-admin-section" name="Breakdown Grid admin section"
+                 location="admin_system_menu" weight="1000">
+        <label>Breakdown Grid</label>
+    </web-section>
+    <web-item key="bdg-conn-link" name="Breakdown Grid Connection Link"
+              section="admin_system_menu/bdg-admin-section" weight="10">
+        <label>Source connection</label>
+        <link linkId="bdg-conn-link">/plugins/servlet/breakdown-grid/config?tab=connection</link>
+    </web-item>
+    <web-item key="bdg-schema-link" name="Breakdown Grid Schema Link"
+              section="admin_system_menu/bdg-admin-section" weight="20">
+        <label>Column schema</label>
+        <link linkId="bdg-schema-link">/plugins/servlet/breakdown-grid/config?tab=schema</link>
+    </web-item>
+
+</atlassian-plugin>

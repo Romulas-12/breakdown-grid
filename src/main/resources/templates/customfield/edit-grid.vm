@@ -1,0 +1,18 @@
+$webResourceManager.requireResource("com.breakdowngrid.breakdown-grid:breakdown-grid-resources")
+## Помилка валідації поля (Jira кладе її в $action.getErrors() під ключем customField.id).
+#if ($action && $action.getErrors() && $action.getErrors().get($customField.id))
+<div class="aui-message aui-message-error error bdg-error">$textutils.htmlEncode($action.getErrors().get($customField.id))</div>
+#end
+## Грід будується на клієнті (breakdown-grid.js) за схемою нижче.
+## data-ctx — контекстний ключ (проект/…) для запиту опцій; data-connected — чи джерело сконфігуровано.
+<div class="bdg-edit" data-field-id="$customField.id" data-ctx="$textutils.htmlEncode($!bdgContextKey)" data-connected="#if($bdgConnected)1#{else}0#end" data-issue-key="$textutils.htmlEncode($!bdgIssueKey)" data-schema="$textutils.htmlEncode($!bdgColumnsJson)">
+    <div class="bdg-title">$textutils.htmlEncode($!customField.name)</div>
+#if(!$bdgColumns || $bdgColumns.size() == 0)
+    <div class="aui-message aui-message-warning bdg-noschema">
+        No column schema is configured for context <b>$textutils.htmlEncode($!bdgContextKey)</b>.
+        Set it in Administration &rarr; System &rarr; Breakdown Grid.
+    </div>
+#end
+    <div class="bdg-mount"></div>
+    <input type="hidden" name="$customField.id" id="$customField.id" class="bdg-json" value="$textutils.htmlEncode($!bdgJson)"/>
+</div>

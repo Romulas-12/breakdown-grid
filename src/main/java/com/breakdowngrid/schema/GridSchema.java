@@ -1,0 +1,70 @@
+package com.breakdowngrid.schema;
+
+import com.google.gson.Gson;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Уся конфігурація схем гріда (зберігається одним JSON у PluginSettings).
+ *
+ *   resolveBy — стратегія вибору набору колонок:
+ *               "project"           — за ключем проекту Jira (за замовчуванням);
+ *               "project+issuetype" — за "PROJ/IssueType" (задільце на майбутнє, див. SchemaResolver).
+ *   schemas   — контекстний ключ (напр. "FIN") -> набір колонок.
+ *
+ * {
+ *   "resolveBy": "project",
+ *   "schemas": { "FIN": { "columns": [ {GridColumn}, ... ] }, ... }
+ * }
+ */
+public class GridSchema {
+
+    public String resolveBy = "project";
+    public Map<String, ProjectSchema> schemas = new LinkedHashMap<String, ProjectSchema>();
+
+    public static class ProjectSchema {
+        public List<GridColumn> columns = new ArrayList<GridColumn>();
+    }
+
+    /** Колонки для заданого контекстного ключа (порожній список, якщо схеми немає). */
+    public List<GridColumn> columnsFor(final String contextKey) {
+        if (contextKey != null && schemas != null) {
+            final ProjectSchema ps = schemas.get(contextKey);
+            if (ps != null && ps.columns != null) {
+                return ps.columns;
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private static final Gson GSON = new Gson();
+
+    public static GridSchema parse(final String json) {
+        if (json == null || json.trim().isEmpty()) {
+            return new GridSchema();
+        }
+        try {
+            final GridSchema s = GSON.fromJson(json, GridSchema.class);
+            if (s == null) {
+                return new GridSchema();
+            }
+            if (s.schemas == null) {
+                s.schemas = new LinkedHashMap<String, ProjectSchema>();
+            }
+            if (s.resolveBy == null || s.resolveBy.trim().isEmpty()) {
+                s.resolveBy = "project";
+            }
+            return s;
+        } catch (Exception e) {
+            return new GridSchema();
+        }
+    }
+
+    public String toJson() {
+        return GSON.toJson(this);
+    }
+}
