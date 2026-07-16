@@ -7,6 +7,8 @@ import com.breakdowngrid.config.GridConnection;
 import com.breakdowngrid.schema.GridColumn;
 import com.breakdowngrid.schema.GridSchema;
 import com.breakdowngrid.schema.SchemaStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -39,6 +41,8 @@ import java.util.List;
  */
 @Path("/options")
 public class OptionsResource {
+
+    private static final Logger log = LoggerFactory.getLogger(OptionsResource.class);
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -136,14 +140,18 @@ public class OptionsResource {
             }
 
             final int code = con.getResponseCode();
-            final boolean ok = code >= 200 && code < 300;
-            final String respBody = read(ok ? con.getInputStream() : con.getErrorStream());
-            if (!ok) {
-                return err(502, "Source returned " + code + ": " + respBody);
+            if (code < 200 || code >= 300) {
+                // Тіло помилки бекенду може містити внутрішні URL/стек-трейси — лише в лог, не клієнту.
+                log.warn("Breakdown Grid options proxy: source '{}' returned HTTP {} (ctx '{}', col '{}'): {}",
+                        connKey, code, ctx, col, read(con.getErrorStream()));
+                return err(502, "Source returned HTTP " + code);
             }
-            return Response.ok(respBody).build();
+            return Response.ok(read(con.getInputStream())).build();
         } catch (Exception e) {
-            return err(502, "Cannot reach source: " + e.getMessage());
+            // e.getMessage() зазвичай містить розвʼязаний внутрішній хост/URL — теж лише в лог.
+            log.warn("Breakdown Grid options proxy: cannot reach source '{}' (ctx '{}', col '{}')",
+                    connKey, ctx, col, e);
+            return err(502, "Cannot reach source");
         } finally {
             if (con != null) {
                 con.disconnect();
