@@ -46,6 +46,13 @@ public class OptionsResource {
 
     private static final Logger log = LoggerFactory.getLogger(OptionsResource.class);
 
+    /**
+     * Плейсхолдер для порожнього {@code <value>} (нове поле ще без вибору): сервіс усе одно
+     * викликається, але у шлях іде цей токен замість порожнього сегмента (щоб URL лишався валідним,
+     * а бекенд отримав «нічого не вибрано»). Навмисно нейтральний, не привʼязаний до жодного бекенду.
+     */
+    private static final String EMPTY_VALUE = "none";
+
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response optionsGet(@QueryParam("ctx") final String ctx,
@@ -107,8 +114,10 @@ public class OptionsResource {
         String path = source.substring(slash + 1);
 
         // Підстановка токена <value> значенням поточної колонки (URL-екрануємо → без "/../" у шляху).
+        // Порожнє значення → EMPTY_VALUE, щоб сегмент шляху не був порожнім, а сервіс усе одно викликався.
         if (path.contains("<value>")) {
-            path = path.replace("<value>", encodePathSeg(val == null ? "" : val));
+            final String v = (val == null || val.trim().isEmpty()) ? EMPTY_VALUE : val.trim();
+            path = path.replace("<value>", encodePathSeg(v));
         }
 
         final GridConnection conn = GridConfig.find(connKey);
