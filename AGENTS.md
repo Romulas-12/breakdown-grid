@@ -41,11 +41,11 @@ or back-end system.
 
 **Schema** (stored as one JSON blob in `PluginSettings`, key `com.breakdowngrid.schemaJson`):
 ```json
-{ "resolveBy": "project",
-  "schemas": { "FIN": { "columns": [ {GridColumn}, ... ] }, "TEST": { … } } }
+{ "schemas": { "FIN": { "columns": [ {GridColumn}, ... ] }, "TEST": { … } } }
 ```
 - Columns are chosen **per context = Jira project** of the issue. `SchemaResolver` is the single
-  extension point (today returns the project key; built to extend to `project+issuetype`).
+  extension point (today returns the project key; change it there to resolve differently later).
+  Legacy blobs may still carry a top-level `resolveBy` string — it is ignored on parse.
 
 **Column** (`GridColumn`):
 | field | meaning |

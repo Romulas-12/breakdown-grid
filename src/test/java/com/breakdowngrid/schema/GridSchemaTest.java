@@ -10,6 +10,8 @@ import static org.junit.Assert.assertTrue;
 
 public class GridSchemaTest {
 
+    // Вхідний JSON навмисно містить застаріле поле "resolveBy" — доводимо, що старі збережені
+    // схеми досі парсяться (Gson ігнорує невідомі поля після видалення project+issuetype).
     private static final String JSON =
             "{\"resolveBy\":\"project\",\"schemas\":{\"FIN\":{\"columns\":["
             + "{\"key\":\"tool\",\"label\":\"Tool\",\"type\":\"string\",\"source\":\"erp/tools/all\"},"
@@ -19,20 +21,23 @@ public class GridSchemaTest {
     @Test
     public void parseNullAndEmptyGiveDefaults() {
         GridSchema a = GridSchema.parse(null);
-        assertEquals("project", a.resolveBy);
         assertNotNull(a.schemas);
         assertTrue(a.schemas.isEmpty());
 
         GridSchema b = GridSchema.parse("   ");
-        assertEquals("project", b.resolveBy);
         assertTrue(b.schemas.isEmpty());
     }
 
     @Test
     public void parseInvalidJsonGivesDefaultsNotThrow() {
         GridSchema s = GridSchema.parse("{ not json ]");
-        assertEquals("project", s.resolveBy);
         assertTrue(s.schemas.isEmpty());
+    }
+
+    @Test
+    public void parseLegacyResolveByFieldIsIgnored() {
+        GridSchema s = GridSchema.parse(JSON);
+        assertEquals(2, s.columnsFor("FIN").size());
     }
 
     @Test

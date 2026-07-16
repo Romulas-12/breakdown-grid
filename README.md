@@ -44,8 +44,7 @@ only — it is not a schema column.
 **Schema** (stored in `PluginSettings`):
 
 ```json
-{ "resolveBy": "project",
-  "schemas": { "PROJKEY": { "columns": [ { GridColumn }, ... ] } } }
+{ "schemas": { "PROJKEY": { "columns": [ { GridColumn }, ... ] } } }
 ```
 
 **Column** (`GridColumn`):

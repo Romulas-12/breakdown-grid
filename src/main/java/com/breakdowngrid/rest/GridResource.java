@@ -99,7 +99,7 @@ public class GridResource {
 
         // Валідація проти схеми проекту issue — атомарно.
         final GridSchema schema = SchemaStore.load();
-        final String ctx = SchemaResolver.contextKeyFor(schema, issue);
+        final String ctx = SchemaResolver.contextKeyFor(issue);
         final List<GridColumn> columns = schema.columnsFor(ctx);
         final List<String> errors = GridValidator.validate(newValue, columns);
         if (!errors.isEmpty()) {

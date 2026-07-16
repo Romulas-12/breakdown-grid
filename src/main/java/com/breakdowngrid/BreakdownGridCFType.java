@@ -110,7 +110,6 @@ public class BreakdownGridCFType extends GenericTextCFType {
             }
             final GridSchema schema = SchemaStore.load();
             String projectKey = null;
-            String issueType = null;
 
             final String issueId = req.getParameter("id");
             if (issueId != null && issueId.matches("\\d+")) {
@@ -119,7 +118,6 @@ public class BreakdownGridCFType extends GenericTextCFType {
                 if (issue != null) {
                     final Project p = issue.getProjectObject();
                     projectKey = p == null ? null : p.getKey();
-                    issueType = issue.getIssueType() == null ? "" : issue.getIssueType().getName();
                 }
             }
             if (projectKey == null) {
@@ -130,7 +128,7 @@ public class BreakdownGridCFType extends GenericTextCFType {
                     projectKey = p == null ? null : p.getKey();
                 }
             }
-            final String ctx = SchemaResolver.contextKey(schema, projectKey, issueType);
+            final String ctx = SchemaResolver.contextKey(projectKey);
             if (ctx == null) {
                 return null;
             }
@@ -160,7 +158,7 @@ public class BreakdownGridCFType extends GenericTextCFType {
         final Map<String, Object> params = super.getVelocityParameters(issue, field, fieldLayoutItem);
 
         final GridSchema schema = SchemaStore.load();
-        final String contextKey = SchemaResolver.contextKeyFor(schema, issue);
+        final String contextKey = SchemaResolver.contextKeyFor(issue);
         final List<GridColumn> columns = schema.columnsFor(contextKey);
 
         final List<Map<String, Object>> bdgColumns = new ArrayList<Map<String, Object>>();
