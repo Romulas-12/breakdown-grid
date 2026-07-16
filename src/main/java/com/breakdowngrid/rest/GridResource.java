@@ -9,6 +9,7 @@ import com.atlassian.jira.issue.util.DefaultIssueChangeHolder;
 import com.atlassian.jira.permission.ProjectPermissions;
 import com.atlassian.jira.security.PermissionManager;
 import com.atlassian.jira.user.ApplicationUser;
+import com.breakdowngrid.BreakdownGridCFType;
 import com.breakdowngrid.schema.GridColumn;
 import com.breakdowngrid.schema.GridNormalizer;
 import com.breakdowngrid.schema.GridSchema;
@@ -59,8 +60,8 @@ public class GridResource {
             return error(Response.Status.FORBIDDEN, "No browse permission");
         }
         final CustomField cf = resolveField(fieldId);
-        if (cf == null) {
-            return error(Response.Status.NOT_FOUND, "Custom field not found: " + fieldId);
+        if (cf == null || !(cf.getCustomFieldType() instanceof BreakdownGridCFType)) {
+            return error(Response.Status.NOT_FOUND, "Not a Breakdown Grid field: " + fieldId);
         }
 
         final Object value = issue.getCustomFieldValue(cf);
@@ -91,8 +92,8 @@ public class GridResource {
             return error(Response.Status.FORBIDDEN, "No edit permission");
         }
         final CustomField cf = resolveField(fieldId);
-        if (cf == null) {
-            return error(Response.Status.NOT_FOUND, "Custom field not found: " + fieldId);
+        if (cf == null || !(cf.getCustomFieldType() instanceof BreakdownGridCFType)) {
+            return error(Response.Status.NOT_FOUND, "Not a Breakdown Grid field: " + fieldId);
         }
 
         final String newValue = body == null ? "" : body;
