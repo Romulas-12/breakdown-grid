@@ -4,6 +4,7 @@ import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.permission.GlobalPermissionKey;
 import com.atlassian.jira.project.Project;
 import com.atlassian.jira.project.ProjectManager;
+import com.atlassian.jira.security.xsrf.XsrfTokenGenerator;
 import com.atlassian.jira.user.ApplicationUser;
 import com.breakdowngrid.schema.GridColumn;
 import com.breakdowngrid.schema.GridSchema;
@@ -75,6 +76,10 @@ public class ConfigServlet extends HttpServlet {
                 && ComponentAccessor.getGlobalPermissionManager().hasPermission(GlobalPermissionKey.ADMINISTER, user);
     }
 
+    private static XsrfTokenGenerator xsrf() {
+        return ComponentAccessor.getComponent(XsrfTokenGenerator.class);
+    }
+
     @Override
     protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
         if (!isAdmin()) {
@@ -82,7 +87,7 @@ public class ConfigServlet extends HttpServlet {
             return;
         }
         final boolean schema = "schema".equals(req.getParameter("tab"));
-        render(resp, schema, req.getParameter("status"));
+        render(resp, schema, req.getParameter("status"), xsrf().generateToken(req));
     }
 
     @Override
@@ -93,6 +98,12 @@ public class ConfigServlet extends HttpServlet {
         }
         final String form = req.getParameter("form");
         final String base = req.getContextPath() + "/plugins/servlet/breakdown-grid/config";
+
+        // CSRF: приймаємо POST лише з валідним токеном сесії (форми несуть atl_token).
+        if (!xsrf().validateToken(req, req.getParameter(XsrfTokenGenerator.TOKEN_WEB_PARAMETER_KEY))) {
+            resp.sendRedirect(base + ("schema".equals(form) ? "?tab=schema" : "?tab=connection") + "&status=xsrf");
+            return;
+        }
 
         if ("schema".equals(form)) {
             final String schemaJson = req.getParameter("schemaJson");
@@ -112,7 +123,7 @@ public class ConfigServlet extends HttpServlet {
             if (!renames.isEmpty() && !confirmed) {
                 final int n = SchemaMigrator.countAffected(renames);
                 if (n > 0) {
-                    renderConfirm(resp, base, schemaJson.trim(), renamesJson, renames, n);
+                    renderConfirm(resp, base, schemaJson.trim(), renamesJson, renames, n, xsrf().generateToken(req));
                     return;
                 }
             }
@@ -267,7 +278,7 @@ public class ConfigServlet extends HttpServlet {
 
     private void renderConfirm(final HttpServletResponse resp, final String base, final String schemaJson,
                                final String renamesJson, final Map<String, Map<String, String>> renames,
-                               final int count) throws IOException {
+                               final int count, final String token) throws IOException {
         resp.setContentType("text/html;charset=UTF-8");
         final PrintWriter w = resp.getWriter();
         w.println("<html><head>");
@@ -294,6 +305,7 @@ public class ConfigServlet extends HttpServlet {
         w.println("<form method='post'>");
         w.println("<input type='hidden' name='form' value='schema'/>");
         w.println("<input type='hidden' name='confirmed' value='true'/>");
+        w.println("<input type='hidden' name='atl_token' value='" + esc(token) + "'/>");
         w.println("<input type='hidden' name='schemaJson' value='" + esc(schemaJson) + "'/>");
         w.println("<input type='hidden' name='renames' value='" + esc(renamesJson == null ? "" : renamesJson) + "'/>");
         w.println("<button type='submit'>Confirm &amp; migrate</button>");
@@ -302,7 +314,8 @@ public class ConfigServlet extends HttpServlet {
         w.println("</div></body></html>");
     }
 
-    private void render(final HttpServletResponse resp, final boolean schema, final String status) throws IOException {
+    private void render(final HttpServletResponse resp, final boolean schema, final String status,
+                        final String token) throws IOException {
         resp.setContentType("text/html;charset=UTF-8");
         final PrintWriter w = resp.getWriter();
         final String activeTab = schema ? "bdg-schema-link" : "bdg-conn-link";
@@ -367,18 +380,20 @@ public class ConfigServlet extends HttpServlet {
             w.println("<div class='bad'>Connections were not saved: invalid data. Please try again.</div>");
         } else if ("conndup".equals(status)) {
             w.println("<div class='bad'>Connections were not saved: duplicate connection key. Keys must be unique.</div>");
+        } else if ("xsrf".equals(status)) {
+            w.println("<div class='bad'>Nothing was saved: the form security token was missing or expired. Please try again.</div>");
         }
 
         if (schema) {
-            renderSchema(w);
+            renderSchema(w, token);
         } else {
-            renderConnection(w);
+            renderConnection(w, token);
         }
 
         w.println("</div></body></html>");
     }
 
-    private void renderConnection(final PrintWriter w) {
+    private void renderConnection(final PrintWriter w, final String token) {
         w.println("<div class='bdg-head'>");
         w.println("<h2>Breakdown Grid — Source connections</h2>");
         w.println("<button type='submit' form='connForm'>Save connections</button>");
@@ -386,7 +401,8 @@ public class ConfigServlet extends HttpServlet {
         w.println("<div class='hint'>One row per external system. In Column schema a Source is written as "
                 + "<code>&lt;key&gt;/path</code> (e.g. <code>erp/tools/all</code>) — the first segment picks the "
                 + "connection. Leave a password blank to keep the current one.</div>");
-        w.println("<form method='post' id='connForm'><input type='hidden' name='form' value='conn'/>");
+        w.println("<form method='post' id='connForm'><input type='hidden' name='form' value='conn'/>"
+                + "<input type='hidden' name='atl_token' value='" + esc(token) + "'/>");
         w.println("<div class='bdg-tabwrap'><table class='cols' id='connTable'><thead><tr>"
                 + "<th>Key</th><th>Base URL</th><th>Auth</th><th>Username</th><th>Password</th><th></th>"
                 + "</tr></thead></table></div>");
@@ -444,7 +460,7 @@ public class ConfigServlet extends HttpServlet {
             + "})();</script>";
     }
 
-    private void renderSchema(final PrintWriter w) {
+    private void renderSchema(final PrintWriter w, final String token) {
         final String schemaJson = scriptSafe(SchemaStore.rawJson());
         w.println("<div class='bdg-head'>");
         w.println("<h2>Breakdown Grid — Column schema</h2>");
@@ -452,7 +468,8 @@ public class ConfigServlet extends HttpServlet {
         w.println("</div>");
         w.println("<div class='hint'>Pick a project on the left. Drag the handle to reorder rows — row order is the column order shown in the grid. "
                 + "Hover the <b>?</b> on any column header for what it does; use <b>&#9998;</b> on a row to add a column description (shown as a tooltip on the issue).</div>");
-        w.println("<form method='post' id='schemaForm'><input type='hidden' name='form' value='schema'/>");
+        w.println("<form method='post' id='schemaForm'><input type='hidden' name='form' value='schema'/>"
+                + "<input type='hidden' name='atl_token' value='" + esc(token) + "'/>");
         w.println("<div class='bdg-cols'>");
         w.println("<div class='bdg-tabs' id='bdgTabs'></div>");
         w.println("<div class='bdg-tabwrap'><table class='cols' id='bdgTable'><thead><tr>"
@@ -538,7 +555,7 @@ public class ConfigServlet extends HttpServlet {
             + "active=order.length?order[0]:null;if(active)table.appendChild(tbodies[active]);renderTabs();\n"
             + "if(window.AJS&&AJS.$){try{AJS.$('#bdgTable .bdg-qh').tooltip({gravity:'n'});}catch(x){}}\n"
             + "document.getElementById('schemaForm').addEventListener('submit',function(){\n"
-            + "  var resolveBy=(BDG_SCHEMA&&BDG_SCHEMA.resolveBy)||'project';var out={resolveBy:resolveBy,schemas:{}};var renames=[];\n"
+            + "  var out={schemas:{}};var renames=[];\n"
             + "  for(var oi=0;oi<order.length;oi++){var P=order[oi];var tb=tbodies[P];var rows=tb.querySelectorAll('tr');var cols=[];\n"
             + "    for(var i=0;i<rows.length;i++){var tr=rows[i];if(tr.className.indexOf('addrow-tr')>=0)continue;\n"
             + "      var lblEl=tr.querySelector('.cLabel');if(!lblEl)continue;\n"

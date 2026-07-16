@@ -11,19 +11,14 @@ import java.util.Map;
 /**
  * Уся конфігурація схем гріда (зберігається одним JSON у PluginSettings).
  *
- *   resolveBy — стратегія вибору набору колонок:
- *               "project"           — за ключем проекту Jira (за замовчуванням);
- *               "project+issuetype" — за "PROJ/IssueType" (задільце на майбутнє, див. SchemaResolver).
- *   schemas   — контекстний ключ (напр. "FIN") -> набір колонок.
+ *   schemas — контекстний ключ (наразі ключ проекту, напр. "FIN") -> набір колонок.
  *
  * {
- *   "resolveBy": "project",
  *   "schemas": { "FIN": { "columns": [ {GridColumn}, ... ] }, ... }
  * }
  */
 public class GridSchema {
 
-    public String resolveBy = "project";
     public Map<String, ProjectSchema> schemas = new LinkedHashMap<String, ProjectSchema>();
 
     public static class ProjectSchema {
@@ -54,9 +49,6 @@ public class GridSchema {
             }
             if (s.schemas == null) {
                 s.schemas = new LinkedHashMap<String, ProjectSchema>();
-            }
-            if (s.resolveBy == null || s.resolveBy.trim().isEmpty()) {
-                s.resolveBy = "project";
             }
             return s;
         } catch (Exception e) {
