@@ -1,6 +1,8 @@
 package com.breakdowngrid.rest;
 
 import com.atlassian.jira.component.ComponentAccessor;
+import com.atlassian.jira.permission.ProjectPermissions;
+import com.atlassian.jira.project.Project;
 import com.atlassian.jira.user.ApplicationUser;
 import com.breakdowngrid.config.GridConfig;
 import com.breakdowngrid.config.GridConnection;
@@ -70,6 +72,17 @@ public class OptionsResource {
         }
         if (ctx == null || ctx.trim().isEmpty() || col == null || col.trim().isEmpty()) {
             return err(400, "ctx and col are required");
+        }
+
+        // Права: користувач має бачити проект, до контексту якого належить колонка (ctx = ключ проекту).
+        // Інакше будь-хто залогінений міг би смикати бекенд-джерело чужого проекту нашими креденшалами.
+        final Project project = ComponentAccessor.getProjectManager().getProjectObjByKey(ctx.trim());
+        if (project == null) {
+            return err(404, "Unknown project context");
+        }
+        if (!ComponentAccessor.getPermissionManager().hasPermission(
+                ProjectPermissions.BROWSE_PROJECTS, project, user)) {
+            return err(403, "No browse permission for this project");
         }
 
         final GridSchema schema = SchemaStore.load();
