@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Адмін-сторінка аддона: /plugins/servlet/breakdown-grid/config (лише для адміністраторів Jira).
@@ -113,6 +114,10 @@ public class ConfigServlet extends HttpServlet {
             }
             if (hasDuplicateKeys(schemaJson)) {
                 resp.sendRedirect(base + "?tab=schema&status=dupkey");
+                return;
+            }
+            if (hasInvalidKeys(schemaJson)) {
+                resp.sendRedirect(base + "?tab=schema&status=keyinvalid");
                 return;
             }
             final String renamesJson = req.getParameter("renames");
@@ -255,6 +260,25 @@ public class ConfigServlet extends HttpServlet {
         return "";
     }
 
+    /** Ключ колонки — лише [A-Za-z0-9_]. Інші символи ламають HTML-атрибути/JSON-ключі/CSS-селектори у гріді. */
+    private static final Pattern KEY_OK = Pattern.compile("^[A-Za-z0-9_]+$");
+
+    /** Чи є хоч один ключ колонки з недопустимими символами (або порожній). */
+    private static boolean hasInvalidKeys(final String schemaJson) {
+        try {
+            final GridSchema s = GridSchema.parse(schemaJson);
+            for (final GridSchema.ProjectSchema ps : s.schemas.values()) {
+                for (final GridColumn c : ps.columns) {
+                    if (!KEY_OK.matcher(c.keySafe()).matches()) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
     /** Дублікати ключів у межах одного проекту неприпустимі. */
     private static boolean hasDuplicateKeys(final String schemaJson) {
         try {
@@ -376,6 +400,8 @@ public class ConfigServlet extends HttpServlet {
             w.println("<div class='bad'>Schema was not saved: invalid data. Please try again.</div>");
         } else if ("dupkey".equals(status)) {
             w.println("<div class='bad'>Schema was not saved: duplicate column key within a project. Keys must be unique per project.</div>");
+        } else if ("keyinvalid".equals(status)) {
+            w.println("<div class='bad'>Schema was not saved: a column key has invalid characters. A key may contain only letters, digits and underscore (A–Z, a–z, 0–9, _) and cannot be empty.</div>");
         } else if ("connerror".equals(status)) {
             w.println("<div class='bad'>Connections were not saved: invalid data. Please try again.</div>");
         } else if ("conndup".equals(status)) {
@@ -554,17 +580,27 @@ public class ConfigServlet extends HttpServlet {
             + "var sc=(BDG_SCHEMA&&BDG_SCHEMA.schemas)||{};for(var k in sc){if(sc.hasOwnProperty(k)){order.push(k);tbodies[k]=makeBody(k,(sc[k]&&sc[k].columns)||[]);}}\n"
             + "active=order.length?order[0]:null;if(active)table.appendChild(tbodies[active]);renderTabs();\n"
             + "if(window.AJS&&AJS.$){try{AJS.$('#bdgTable .bdg-qh').tooltip({gravity:'n'});}catch(x){}}\n"
-            + "document.getElementById('schemaForm').addEventListener('submit',function(){\n"
-            + "  var out={schemas:{}};var renames=[];\n"
-            + "  for(var oi=0;oi<order.length;oi++){var P=order[oi];var tb=tbodies[P];var rows=tb.querySelectorAll('tr');var cols=[];\n"
+            + "function clearSchemaError(){var e=document.getElementById('bdgClientErr');if(e&&e.parentNode)e.parentNode.removeChild(e);}\n"
+            + "function showSchemaError(msg){clearSchemaError();var d=el('div','bad');d.id='bdgClientErr';d.textContent=msg;var host=document.getElementById('bdg');host.insertBefore(d,host.firstChild);if(d.scrollIntoView)d.scrollIntoView({block:'nearest'});}\n"
+            + "var KEYRE=/^[A-Za-z0-9_]+$/;\n"
+            + "document.getElementById('schemaForm').addEventListener('submit',function(e){\n"
+            + "  var out={schemas:{}};var renames=[];var problems=[];\n"
+            + "  for(var pk in tbodies){if(tbodies.hasOwnProperty(pk)){var kk=tbodies[pk].querySelectorAll('input.cKey');for(var ci=0;ci<kk.length;ci++)kk[ci].style.borderColor='';}}\n"
+            + "  for(var oi=0;oi<order.length;oi++){var P=order[oi];var tb=tbodies[P];var rows=tb.querySelectorAll('tr');var cols=[];var seen={};\n"
             + "    for(var i=0;i<rows.length;i++){var tr=rows[i];if(tr.className.indexOf('addrow-tr')>=0)continue;\n"
             + "      var lblEl=tr.querySelector('.cLabel');if(!lblEl)continue;\n"
-            + "      var label=(lblEl.value||'').trim();var key=(tr.querySelector('.cKey').value||'').trim()||slug(label);if(!key)continue;\n"
+            + "      var keyEl=tr.querySelector('.cKey');\n"
+            + "      var label=(lblEl.value||'').trim();var key=(keyEl.value||'').trim()||slug(label);if(!key)continue;\n"
+            + "      if(!KEYRE.test(key)){problems.push(P+' - invalid key: '+key);keyEl.style.borderColor='#bf2600';}\n"
+            + "      else if(Object.prototype.hasOwnProperty.call(seen,key)){problems.push(P+' - duplicate key: '+key);keyEl.style.borderColor='#bf2600';}\n"
+            + "      else{seen[key]=1;}\n"
             + "      var oldK=tr.getAttribute('data-old-key')||'';if(oldK&&key!==oldK)renames.push({project:P,oldKey:oldK,newKey:key});\n"
             + "      var deps=(tr.querySelector('.cDepends').value||'').split(',').map(function(s){return s.trim();}).filter(function(s){return s;});\n"
             + "      var descEl=tr.querySelector('.cDesc');var desc=descEl?(descEl.value||'').trim():'';\n"
             + "      cols.push({key:key,label:label||key,description:desc,type:tr.querySelector('.cType').value,source:(tr.querySelector('.cSource').value||'').trim(),dependsOn:deps,sum:tr.querySelector('.cSum').checked,required:tr.querySelector('.cReq').checked});}\n"
             + "    out.schemas[P]={columns:cols};}\n"
+            + "  if(problems.length){e.preventDefault();showSchemaError('Schema not saved - fix column keys ['+problems.join('; ')+']. Allowed: A-Z a-z 0-9 _');return false;}\n"
+            + "  clearSchemaError();\n"
             + "  document.getElementById('schemaJson').value=JSON.stringify(out);document.getElementById('renames').value=JSON.stringify(renames);\n"
             + "});\n"
             + "})();</script>";
