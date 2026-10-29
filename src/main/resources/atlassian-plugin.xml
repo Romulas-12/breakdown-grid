@@ -34,6 +34,14 @@
         <resource type="velocity" name="edit" location="templates/customfield/edit-grid.vm"/>
     </customfield-type>
 
+    <!-- Пошук по колонках гріда: JQL `"Grid" ~ "колонка оператор значення"`.
+         Індексує значення комірок окремими термами по колонках (не сирий JSON). -->
+    <customfield-searcher key="breakdown-grid-searcher" name="Breakdown Grid Column Searcher"
+                          class="com.breakdowngrid.search.BreakdownGridSearcher">
+        <description>Column-aware search for the Breakdown Grid field.</description>
+        <valid-customfield-type package="com.breakdowngrid.breakdown-grid" key="breakdown-grid"/>
+    </customfield-searcher>
+
     <!-- REST для зовнішньої системи + проксі автокомпліту -->
     <rest key="breakdown-grid-rest" path="/breakdown-grid" version="1.0">
         <description>REST API for the breakdown grid.</description>
