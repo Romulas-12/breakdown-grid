@@ -26,6 +26,10 @@ read and written by an external system over REST.
 - **Cascading / dependent lists** — a column's options can depend on other columns in the same row.
 - **Per-column descriptions** — shown as tooltips on the column headers.
 - **Bidirectional REST** — external systems read/write the whole grid (full-replace, validated).
+- **Column-aware JQL search** — find issues by a grid column (`"Field" ~ "column = value"`), typed
+  (text / number / date ranges), matching if any row qualifies.
+- **Form events** — the grid fires a native `change` plus granular `bdg:*` DOM events on edit, for
+  ScriptRunner Behaviours or custom scripts to react to row/cell changes.
 - Renders as its own collapsible section on the issue, styled to match native Jira modules.
 
 ---
@@ -98,6 +102,43 @@ responsibility (read → build the full list → write).
 
 **Validation runs in three layers:** (1) server on the UI submit, (2) client before submit,
 (3) REST `PUT` (authoritative — rejects the whole write on any error).
+
+---
+
+## Search (JQL)
+
+The grid is searchable **per column** (not as raw JSON). The outer operator is always `~`; the quoted
+value carries the column key, an operator and a value:
+
+```
+"Field Name" ~ "resource = AWS"
+"Field Name" ~ "amount >= 1000"
+"Field Name" ~ "due < 2026-06-01"
+```
+
+Inner operators: `=` `!=` `~` (contains) for any type; `>` `>=` `<` `<=` for numbers and dates
+(`yyyy-MM-dd`). A match means **any row** satisfies the condition. boolean columns are not indexed.
+
+Values index on write, so new and edited issues are searchable immediately; **existing issues need a
+full re-index** (Administration → System → Indexing) before they become findable — in particular right
+after installing/upgrading to a version that adds search.
+
+---
+
+## Form events
+
+On the edit/create form the grid signals its changes so other fields or scripts can react:
+
+- a native bubbling `change` on the field's hidden input — so **ScriptRunner Behaviours** (and any
+  "field changed" handler) see edits made inside the dialog, not only on initial Create;
+- granular DOM events on the field element: `bdg:rowadded` / `bdg:rowremoved` (with `isEmpty`) /
+  `bdg:cellchanged` (`{ rowId, column, value }`).
+
+Each row carries a stable internal `_rowId` (a reserved key, assigned server-side on every write) so
+row-level logic can tell an edited row from a delete-plus-add. Column keys may not start with `_`.
+
+A Behaviour sees the **whole field value** (full JSON) — enough for totals or row counts; for *which
+cell* changed, use `bdg:cellchanged`.
 
 ---
 
