@@ -15,6 +15,33 @@
     // Стабільний id рядка (службовий _rowId): id фіксується вже під час редагування форми;
     // остаточно його гарантує сервер при записі.
     function newRowId() { return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+    // ── Події гріда для інтеграції на формі (ScriptRunner Behaviours / власні обробники) ──
+    // Кастомний віджет оновлює значення поля програмно, тож сам диспатчить нативний change
+    // на прихованому полі (інакше Behaviours не бачать правок у модалці), а також гранулярні
+    // CustomEvents про рядки/комірки. Усе з fallback'ом на старі браузери.
+    function rowCount(root) { return root.querySelectorAll("tbody tr").length; }
+    function mkEvent(name, detail) {
+        try { return new CustomEvent(name, { bubbles: true, detail: detail || {} }); }
+        catch (e) {
+            var ev = document.createEvent("CustomEvent");
+            ev.initCustomEvent(name, true, false, detail || {});
+            return ev;
+        }
+    }
+    function emit(root, name, detail) {
+        if (!root) { return; }
+        try { root.dispatchEvent(mkEvent(name, detail)); } catch (e) { /* no-op */ }
+    }
+    // Нативний change на прихованому полі — сигнал «значення поля змінилось» для Behaviours.
+    function fireFieldChange(root) {
+        var h = root.querySelector(".bdg-json");
+        if (!h) { return; }
+        var ev;
+        try { ev = new Event("change", { bubbles: true }); }
+        catch (e) { ev = document.createEvent("HTMLEvents"); ev.initEvent("change", true, false); }
+        try { h.dispatchEvent(ev); } catch (e2) { /* no-op */ }
+    }
     var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
     // Тултипи-описи колонок: значок «?» несе title; на issue (view+edit) показуємо їх AUI-тултипом,
@@ -428,6 +455,8 @@
         var first = tr.querySelector(".bdg-cell");
         if (first && first.focus) { first.focus(); }
         recalc(root);
+        fireFieldChange(root);
+        emit(root, "bdg:rowadded", { rowId: tr.getAttribute("data-rowid"), rowCount: rowCount(root) });
     }
 
     // ── Клієнтська валідація (шар «підлога») ───────────────────────────────────
@@ -583,7 +612,12 @@
                 if (r2) {
                     e.preventDefault();
                     var tr = closest(delBtn, "tr");
-                    if (tr && tr.parentNode) { tr.parentNode.removeChild(tr); recalc(r2); }
+                    if (tr && tr.parentNode) {
+                        var rid = tr.getAttribute("data-rowid");
+                        tr.parentNode.removeChild(tr); recalc(r2);
+                        fireFieldChange(r2);
+                        emit(r2, "bdg:rowremoved", { rowId: rid, rowCount: rowCount(r2), isEmpty: rowCount(r2) === 0 });
+                    }
                 }
             }
         }, true);
@@ -594,8 +628,15 @@
             var root = rootOf(cell);
             if (!root) { return; }
             if (cell.classList.contains("bdg-select")) { syncId(cell); }
-            reloadDependents(root, closest(cell, "tr"), cell.getAttribute("data-col"));
+            var tr = closest(cell, "tr");
+            reloadDependents(root, tr, cell.getAttribute("data-col"));
             recalc(root);
+            fireFieldChange(root);
+            emit(root, "bdg:cellchanged", {
+                rowId: tr ? tr.getAttribute("data-rowid") : null,
+                column: cell.getAttribute("data-col"),
+                value: (cell.type === "checkbox") ? !!cell.checked : (cell.value || "")
+            });
         }
         document.addEventListener("change", onEdit, true);
         document.addEventListener("input", onEdit, true);
