@@ -12,6 +12,9 @@
     "use strict";
 
     function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+    // Стабільний id рядка (службовий _rowId): id фіксується вже під час редагування форми;
+    // остаточно його гарантує сервер при записі.
+    function newRowId() { return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
     var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
     // Тултипи-описи колонок: значок «?» несе title; на issue (view+edit) показуємо їх AUI-тултипом,
@@ -220,6 +223,7 @@
     function buildRow(root, rowData) {
         var cols = root._bdgCols || [];
         var tr = document.createElement("tr");
+        tr.setAttribute("data-rowid", (rowData && rowData._rowId) ? rowData._rowId : newRowId());
         for (var i = 0; i < cols.length; i++) { tr.appendChild(buildCell(root, cols[i], rowData)); }
         var tdDel = document.createElement("td");
         tdDel.innerHTML = '<button type="button" class="aui-button aui-button-link bdg-del" title="Delete row">✕</button>';
@@ -358,6 +362,9 @@
         var trs = root.querySelectorAll("tbody tr");
         for (var i = 0; i < trs.length; i++) {
             var tr = trs[i], obj = {};
+            var rid = tr.getAttribute("data-rowid");
+            if (!rid) { rid = newRowId(); tr.setAttribute("data-rowid", rid); }
+            obj._rowId = rid;
             for (var c = 0; c < cols.length; c++) {
                 var col = cols[c];
                 var el = tr.querySelector('.bdg-cell[data-col="' + col.key + '"]');

@@ -3,6 +3,7 @@ package com.breakdowngrid;
 import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.issue.Issue;
 import com.atlassian.jira.issue.IssueManager;
+import com.atlassian.jira.issue.customfields.impl.FieldValidationException;
 import com.atlassian.jira.issue.customfields.impl.GenericTextCFType;
 import com.atlassian.jira.issue.customfields.manager.GenericConfigManager;
 import com.atlassian.jira.issue.customfields.persistence.CustomFieldValuePersister;
@@ -18,6 +19,7 @@ import com.atlassian.jira.util.ErrorCollection;
 import com.atlassian.jira.web.ExecutingHttpRequest;
 import com.breakdowngrid.config.GridConfig;
 import com.breakdowngrid.schema.GridColumn;
+import com.breakdowngrid.schema.GridRowIds;
 import com.breakdowngrid.schema.GridSchema;
 import com.breakdowngrid.schema.GridValidator;
 import com.breakdowngrid.schema.SchemaResolver;
@@ -61,6 +63,17 @@ public class BreakdownGridCFType extends GenericTextCFType {
     @Override
     protected PersistenceFieldType getDatabaseType() {
         return PersistenceFieldType.TYPE_UNLIMITED_TEXT;
+    }
+
+    /**
+     * Значення UI-сабміту: проставляємо службовий _rowId рядкам без нього (сервер — авторитет
+     * для стабільного id рядка; REST-шлях робить це в GridResource). Клієнт теж генерує id,
+     * тут — підстраховка на випадок, коли дані прийшли без нього.
+     */
+    @Override
+    public String getValueFromCustomFieldParams(final CustomFieldParams params)
+            throws FieldValidationException {
+        return GridRowIds.ensure(super.getValueFromCustomFieldParams(params));
     }
 
     /**

@@ -12,6 +12,7 @@ import com.atlassian.jira.user.ApplicationUser;
 import com.breakdowngrid.BreakdownGridCFType;
 import com.breakdowngrid.schema.GridColumn;
 import com.breakdowngrid.schema.GridNormalizer;
+import com.breakdowngrid.schema.GridRowIds;
 import com.breakdowngrid.schema.GridSchema;
 import com.breakdowngrid.schema.GridValidator;
 import com.breakdowngrid.schema.SchemaResolver;
@@ -107,8 +108,9 @@ public class GridResource {
             return error(Response.Status.BAD_REQUEST, String.join(" ", errors));
         }
 
-        // Тихо нормалізуємо числові (int → ціле, decimal → 15,2) вже після успішної валідації.
-        final String stored = GridNormalizer.normalize(newValue, columns);
+        // Тихо нормалізуємо числові (int → ціле, decimal → 15,2) вже після успішної валідації,
+        // і проставляємо службовий _rowId рядкам без нього (стабільний id для подій/історії).
+        final String stored = GridRowIds.ensure(GridNormalizer.normalize(newValue, columns));
 
         final Object oldValue = issue.getCustomFieldValue(cf);
         issue.setCustomFieldValue(cf, stored);

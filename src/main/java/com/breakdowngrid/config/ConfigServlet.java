@@ -269,7 +269,8 @@ public class ConfigServlet extends HttpServlet {
             final GridSchema s = GridSchema.parse(schemaJson);
             for (final GridSchema.ProjectSchema ps : s.schemas.values()) {
                 for (final GridColumn c : ps.columns) {
-                    if (!KEY_OK.matcher(c.keySafe()).matches()) {
+                    // Ведучий «_» зарезервовано для службових ключів даних (напр. _rowId).
+                    if (!KEY_OK.matcher(c.keySafe()).matches() || c.keySafe().startsWith("_")) {
                         return true;
                     }
                 }
@@ -401,7 +402,7 @@ public class ConfigServlet extends HttpServlet {
         } else if ("dupkey".equals(status)) {
             w.println("<div class='bad'>Schema was not saved: duplicate column key within a project. Keys must be unique per project.</div>");
         } else if ("keyinvalid".equals(status)) {
-            w.println("<div class='bad'>Schema was not saved: a column key has invalid characters. A key may contain only letters, digits and underscore (A–Z, a–z, 0–9, _) and cannot be empty.</div>");
+            w.println("<div class='bad'>Schema was not saved: a column key has invalid characters. A key may contain only letters, digits and underscore (A–Z, a–z, 0–9, _), cannot be empty and cannot start with an underscore (reserved for internal keys).</div>");
         } else if ("connerror".equals(status)) {
             w.println("<div class='bad'>Connections were not saved: invalid data. Please try again.</div>");
         } else if ("conndup".equals(status)) {
@@ -591,7 +592,7 @@ public class ConfigServlet extends HttpServlet {
             + "      var lblEl=tr.querySelector('.cLabel');if(!lblEl)continue;\n"
             + "      var keyEl=tr.querySelector('.cKey');\n"
             + "      var label=(lblEl.value||'').trim();var key=(keyEl.value||'').trim()||slug(label);if(!key)continue;\n"
-            + "      if(!KEYRE.test(key)){problems.push(P+' - invalid key: '+key);keyEl.style.borderColor='#bf2600';}\n"
+            + "      if(!KEYRE.test(key)||key.charAt(0)==='_'){problems.push(P+' - invalid key: '+key);keyEl.style.borderColor='#bf2600';}\n"
             + "      else if(Object.prototype.hasOwnProperty.call(seen,key)){problems.push(P+' - duplicate key: '+key);keyEl.style.borderColor='#bf2600';}\n"
             + "      else{seen[key]=1;}\n"
             + "      var oldK=tr.getAttribute('data-old-key')||'';if(oldK&&key!==oldK)renames.push({project:P,oldKey:oldK,newKey:key});\n"
