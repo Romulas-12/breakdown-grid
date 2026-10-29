@@ -156,7 +156,38 @@ project are rejected.
 
 ---
 
-## 7. Source layout
+## 7. Search (JQL, by column)
+
+The grid field is searchable **per column** (not as raw JSON) via a custom `CustomFieldSearcher`
+(package `search/`). JQL form — the outer operator is always `~` (LIKE); the inner string carries the
+column key, an operator and a value:
+
+```
+"Field Name" ~ "<column> <op> <value>"      e.g.  "Payment Grid" ~ "resource = AWS"
+                                                  "Payment Grid" ~ "amount >= 1000"
+                                                  "Payment Grid" ~ "due < 2026-06-01"
+```
+
+Inner ops: `=` `!=` `~` (contains) for any type; `>` `>=` `<` `<=` for numbers and dates (`yyyy-MM-dd`).
+Match if **any row** satisfies (terms are multi-valued, one per row).
+
+`BreakdownGridIndexer` lays per-cell Lucene terms keyed `customfield_<id>_<colKey>_<suffix>`:
+`_e` exact text (lowercased), `_t` analyzed text, `_n` number (`DoublePoint`, int/decimal),
+`_d` date epochDay (`LongPoint`). **boolean columns are not indexed.** `BreakdownGridSearcher extends
+TextSearcher`, overriding `getSearchInformation()` (returns our indexer) and
+`getCustomFieldSearcherClauseHandler()` (our clause). The indexer and the query-factory are self-consistent,
+so no Jira numeric format is reproduced — ranges use plain `DoublePoint`/`LongPoint`.
+
+- Needs **jira-core** + **lucene-core** (both `provided`) — the searcher-building types are not in jira-api.
+- `CustomFieldSearcherInformation` does **not** exist in 8.16.1 → implement the `SearcherInformation`
+  interface yourself (5 methods) and return the indexer from `getRelatedIndexers()`.
+- `issueFunction in …` is a **ScriptRunner** feature, not core Jira — the custom searcher above works on a
+  plain instance without it.
+- New/edited issues index on write; **existing issues need a full re-index** before they are findable.
+
+---
+
+## 8. Source layout
 
 ```
 src/main/java/com/breakdowngrid/
@@ -174,6 +205,12 @@ src/main/java/com/breakdowngrid/
     GridValidator.java         # required/type checks (shared by REST + UI)
     GridNormalizer.java        # int/decimal(15,2) silent rounding on write
     SchemaMigrator.java        # key-rename data migration across issues (silent, via persister)
+  search/
+    BreakdownGridIndexer.java          # per-column Lucene terms (_e/_t/_n/_d) from schema + row JSON
+    BreakdownGridSearcher.java         # extends TextSearcher; swaps in our indexer + clause handler
+    BreakdownGridClauseHandler.java    # CustomFieldSearcherClauseHandler (ops, data type)
+    BreakdownGridClauseQueryFactory.java  # parses "<col> <op> <val>" → Lucene query
+    BreakdownGridClauseValidator.java  # no-op validator (factory rejects bad exprs)
 src/main/resources/
   atlassian-plugin.xml
   templates/customfield/{view-grid.vm, edit-grid.vm}
@@ -183,7 +220,7 @@ src/main/resources/
 
 ---
 
-## 8. Build, deploy, test
+## 9. Build, deploy, test
 
 - **Build:** `atlas-package -o -B -DskipTests` (Atlassian Plugin SDK **8.2.7**, JDK 8) →
   `target/breakdown-grid-<version>.jar` / `.obr`. **Bump `<version>` in `pom.xml` on every build** so UPM
@@ -199,7 +236,7 @@ src/main/resources/
 
 ---
 
-## 9. Gotchas already paid for — do not rediscover
+## 10. Gotchas already paid for — do not rediscover
 
 1. **`<script>` is stripped in inline Quick-Edit.** Jira injects the field's edit HTML via AJAX and
    drops `<script>` tags → data must ride in **attributes**. The column schema is in
@@ -225,7 +262,7 @@ src/main/resources/
 
 ---
 
-## 10. Conventions
+## 11. Conventions
 
 - **Verify Jira API against the jar** — don't guess method signatures (see gotcha 6). JAX-RS is 1.1.
 - Keep the identity **neutral** — no company / domain / back-end names anywhere in code, config, or docs.
